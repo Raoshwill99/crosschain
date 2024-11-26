@@ -53,35 +53,6 @@
     )
 )
 
-;; Enhanced Scoring Function
-(define-public (calculate-resilience-score 
-    (tx-hash (buff 32))
-    (btc-tx-hash (buff 32))
-    (amount uint)
-    (security-level uint))
-    (begin
-        (asserts! (is-verified-btc-tx btc-tx-hash) ERR_CROSS_CHAIN_VERIFICATION)
-        (let ((base-score (calculate-base-score amount security-level)))
-            (let ((final-score (apply-cross-chain-multiplier 
-                base-score 
-                (get-btc-verification btc-tx-hash))))
-                
-                (map-set TransactionScores
-                    { tx-hash: tx-hash }
-                    {
-                        score: final-score,
-                        btc-verification: true,
-                        cross-chain-height: block-height,
-                        security-level: security-level,
-                        processed: false
-                    }
-                )
-                (ok final-score)
-            )
-        )
-    )
-)
-
 ;; Helper Functions
 (define-private (is-verified-btc-tx (btc-tx-hash (buff 32)))
     (match (map-get? CrossChainVerification { btc-tx-hash: btc-tx-hash })
@@ -94,21 +65,6 @@
     (default-to
         { verified: false, confirmations: u0, verification-time: u0 }
         (map-get? CrossChainVerification { btc-tx-hash: btc-tx-hash })
-    )
-)
-
-(define-private (calculate-base-score (amount uint) (security-level uint))
-    (let ((raw-score (/ (* amount security-level) u100)))
-        (min raw-score u100)
-    )
-)
-
-(define-private (apply-cross-chain-multiplier 
-    (score uint)
-    (verification {verified: bool, confirmations: uint, verification-time: uint}))
-    (if (get verified verification)
-        (* score (min (get confirmations verification) u100))
-        score
     )
 )
 
